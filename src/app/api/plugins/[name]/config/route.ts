@@ -60,6 +60,35 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     );
   }
 
+  // Validate config values against configSchema if defined
+  const configSchema = JSON.parse(plugin.configSchema || "{}");
+  if (Object.keys(configSchema).length > 0) {
+    for (const [key, value] of Object.entries(parsed.data.config)) {
+      const field = configSchema[key];
+      if (!field) continue; // Allow extra keys
+      if (field.type === "number" && typeof value === "number") {
+        if (field.min !== undefined && value < field.min) {
+          return NextResponse.json(
+            { error: `Config '${key}' must be >= ${field.min}` },
+            { status: 400, headers: CORS_HEADERS }
+          );
+        }
+        if (field.max !== undefined && value > field.max) {
+          return NextResponse.json(
+            { error: `Config '${key}' must be <= ${field.max}` },
+            { status: 400, headers: CORS_HEADERS }
+          );
+        }
+      }
+      if (field.type === "select" && field.enum && !field.enum.includes(String(value))) {
+        return NextResponse.json(
+          { error: `Config '${key}' must be one of: ${field.enum.join(", ")}` },
+          { status: 400, headers: CORS_HEADERS }
+        );
+      }
+    }
+  }
+
   updatePluginConfig(name, parsed.data.config);
 
   return NextResponse.json(

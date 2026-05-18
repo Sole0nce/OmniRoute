@@ -98,19 +98,18 @@ export async function loadPlugin(
   const moduleObj = { exports: moduleExports };
   sandbox.module = moduleObj;
   sandbox.exports = moduleExports;
+  const allowedModules: Record<string, unknown> = {};
+  if (permissions.includes("network")) {
+    allowedModules.crypto = require("crypto");
+  }
   sandbox.require = (id: string) => {
-    // Only allow specific safe modules
-    const allowed: Record<string, unknown> = {};
-    if (id === "crypto") {
-      allowed.crypto = require("crypto");
-    }
-    if (allowed[id]) return allowed[id];
+    if (id in allowedModules) return allowedModules[id];
     throw new Error(`Module '${id}' is not allowed in plugin sandbox`);
   };
 
   try {
     // Wrap source in a function to capture exports
-    const wrapped = `(async function(module, exports, require) { ${source} })(module, exports, require);`;
+    const wrapped = `(async function(module, exports, require) {\n${source}\n})(module, exports, require);`;
     vm.runInContext(wrapped, context, {
       filename: entryPoint,
       timeout: 10000, // 10s init timeout

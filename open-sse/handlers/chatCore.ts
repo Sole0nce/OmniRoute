@@ -1526,6 +1526,7 @@ export async function handleChatCore({
   let tokensCompressed: number | null = null;
   body = injectSystemPrompt(body);
   // ── Plugin onRequest hook ──
+  // Dynamic import cached by Node.js after first call — minimal overhead
   try {
     const { runOnRequest } = await import("@/lib/plugins/index");
     const pluginCtx = {
@@ -1560,7 +1561,7 @@ export async function handleChatCore({
       };
     }
     if (pluginResult?.ctx && "body" in pluginResult.ctx) {
-      body = (pluginResult.ctx as Record<string, unknown>).body;
+      body = (pluginResult.ctx as unknown as Record<string, unknown>).body;
     }
   } catch (pluginErr) {
     log?.debug?.(

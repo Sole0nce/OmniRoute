@@ -48,7 +48,36 @@ class PluginManager {
    * Copies to plugin dir, validates manifest, registers in DB.
    */
   async install(sourceDir: string): Promise<PluginRow> {
-    const { plugins, errors } = await scanPluginDir(sourceDir);
+    // Check if sourceDir itself contains plugin.json (direct plugin dir)
+    const { safeValidateManifest } = await import("./manifest");
+    const { readFile: readFileFs } = await import("fs/promises");
+    let directPlugin: {
+      name: string;
+      manifest: any;
+      pluginDir: string;
+      entryPoint: string;
+    } | null = null;
+
+    try {
+      const manifestPath = join(sourceDir, "plugin.json");
+      const raw = await readFileFs(manifestPath, "utf-8");
+      const parsed = JSON.parse(raw);
+      const result = safeValidateManifest(parsed);
+      if (result.success) {
+        const entryPoint = join(sourceDir, result.data.main);
+        directPlugin = {
+          name: result.data.name,
+          manifest: result.data,
+          pluginDir: sourceDir,
+          entryPoint,
+        };
+      }
+    } catch {}
+
+    const { plugins, errors } = directPlugin
+      ? { plugins: [directPlugin], errors: [] }
+      : await scanPluginDir(sourceDir);
+
     if (plugins.length === 0) {
       throw new Error(
         `No valid plugin found in ${sourceDir}: ${errors.map((e) => e.error).join(", ")}`
@@ -110,7 +139,12 @@ class PluginManager {
     if (row.status === "active") return;
 
     const manifest = JSON.parse(row.manifest) as PluginManifestWithDefaults;
+
+    // Path traversal guard: entry point must stay within plugin directory
     const entryPoint = join(row.pluginDir, manifest.main);
+    if (!entryPoint.startsWith(row.pluginDir)) {
+      throw new Error(`Plugin '${name}' entry point escapes plugin directory`);
+    }
 
     try {
       const loaded = await loadPlugin(entryPoint, manifest);
