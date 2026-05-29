@@ -3579,8 +3579,19 @@ export async function handleComboChat({
         const structuredError =
           rawError && typeof rawError === "object"
             ? {
-                code: (rawError as Record<string, unknown>).code as string,
-                type: (rawError as Record<string, unknown>).type as string,
+                // Upstream JSON may carry a numeric `code`/`type` (e.g. {"code":40001}).
+                // Coerce to string if present instead of discarding, so downstream string
+                // ops (.toLowerCase, .startsWith) can run safely without type crashes.
+                code:
+                  (rawError as Record<string, unknown>).code !== undefined &&
+                  (rawError as Record<string, unknown>).code !== null
+                    ? String((rawError as Record<string, unknown>).code)
+                    : undefined,
+                type:
+                  (rawError as Record<string, unknown>).type !== undefined &&
+                  (rawError as Record<string, unknown>).type !== null
+                    ? String((rawError as Record<string, unknown>).type)
+                    : undefined,
               }
             : undefined;
         const fallbackResult = checkFallbackError(
@@ -4115,8 +4126,19 @@ async function handleRoundRobinCombo({
         const structuredError =
           rawError && typeof rawError === "object"
             ? {
-                code: (rawError as Record<string, unknown>).code as string,
-                type: (rawError as Record<string, unknown>).type as string,
+                // Upstream JSON may carry a numeric `code`/`type` (e.g. {"code":40001}).
+                // Coerce to string if present instead of discarding, so downstream string
+                // ops (.toLowerCase, .startsWith) can run safely without type crashes.
+                code:
+                  (rawError as Record<string, unknown>).code !== undefined &&
+                  (rawError as Record<string, unknown>).code !== null
+                    ? String((rawError as Record<string, unknown>).code)
+                    : undefined,
+                type:
+                  (rawError as Record<string, unknown>).type !== undefined &&
+                  (rawError as Record<string, unknown>).type !== null
+                    ? String((rawError as Record<string, unknown>).type)
+                    : undefined,
               }
             : undefined;
         const fallbackResult = checkFallbackError(
