@@ -8,6 +8,19 @@
 
 _Development cycle in progress — entries are added as work merges into `release/v3.8.13` and finalized by the release flow._
 
+### ✨ New Features
+
+- **feat(web-cookie):** self-service login infrastructure for 21 web-cookie providers — three login pathways (Electron BrowserWindow, Playwright dashboard fallback, `POST /api/providers/{id}/login`), token-extraction configs, and a 15-min cookie-validity auto-refresh daemon. Hardened on merge: error bodies sanitized (Hard Rule #12), the spawn-capable login route classified LOCAL_ONLY (Hard Rules #15/#17), and the Electron status listener de-duplicated. ([#3292](https://github.com/diegosouzapw/OmniRoute/pull/3292), closes #3070 — thanks @oyi77 / @diegosouzapw)
+- **feat(api):** accept path-scoped API keys on client API routes — keys may now arrive via `/api/v1/vscode/<key>/…` path aliases (incl. `raw`/`combos`) or `?token=`/`?apiKey=`/`?api_key=`/`?key=` query params; explicit `Authorization`/`x-api-key` headers still take precedence. Split out of #3073. ([#3300](https://github.com/diegosouzapw/OmniRoute/pull/3300) — thanks @zhiru)
+
+### 🔧 Bug Fixes
+
+- **fix(sse):** harden the passthrough stream against empty upstream responses — emit a synthetic retry chunk on an empty `choices: []` (fixes a Copilot Chat crash) and log empty post-`tool_calls` completions; also registers **MiniMax M3** (1M context) across 8 provider tiers. ([#3297](https://github.com/diegosouzapw/OmniRoute/pull/3297), #3110 — thanks @wilsonicdev)
+- **fix(opencode-provider):** extract `contextLength` from the live `/v1/models` catalog (live > `modelContextLengths` > static map) so passthrough models outside the legacy 8-model map no longer silently truncate to OpenCode's 128K default. ([#3298](https://github.com/diegosouzapw/OmniRoute/pull/3298) — thanks @herjarsa / @diegosouzapw)
+- **fix(dev):** auto-rebuild `better-sqlite3` on a Node ABI mismatch at `npm run dev` startup (nvm 22↔24) — dev-only, no-op on the healthy path, unrelated errors not swallowed. ([#3301](https://github.com/diegosouzapw/OmniRoute/pull/3301) — thanks @zhiru)
+- **fix(api):** remove the bundled **Completions.me** provider preset — empirically verified to return Rick Astley lyrics instead of real completions for every model/prompt. ([#3302](https://github.com/diegosouzapw/OmniRoute/pull/3302), discussion #3293 — thanks @diegosouzapw; reported by @mikmaneggahommie)
+- **fix(ci):** skip the auto-deploy step when the VPS SSH port is unreachable from the GitHub runner (private LAN / firewall) instead of red-failing every release pipeline; genuine deploy/boot failures still fail honestly. ([#3299](https://github.com/diegosouzapw/OmniRoute/pull/3299) — thanks @diegosouzapw)
+
 ---
 
 ## [3.8.12] — 2026-06-06
