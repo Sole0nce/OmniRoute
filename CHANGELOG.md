@@ -2,24 +2,7 @@
 
 ## [Unreleased]
 
-### ✨ New Features
-- **api:** `POST /api/models/test-all` — parallel model testing with chunk size 3 and timeout-skip
-- **api:** shared `runSingleModelTest` runner extracted from single-test endpoint
-- **providers:** per-connection rate-limit overrides via PATCH `/api/providers/:id`
-- **db:** `rate_limit_overrides_json` column + Zod schema + serialization helpers
-- **dashboard:** model visibility filter toolbar (All / Visible / Hidden)
-- **api:** `/v1/models` catalog excludes user-hidden models
-- **providers:** auto-fetch models on every connection add (universalized)
-- **dashboard:** test buttons for passthrough models (OpenRouter)
-
-### 🔧 Bug Fixes
-- **dashboard:** missing handlers — handleDelete, handleSetAlias, handleDeleteAlias, handleToggleSelectAll
-- **auth:** fetchData crash in auth import modals
-- **debug:** stray console.log removed; error handlers use console.error
-- **dashboard:** React key collisions from duplicate model IDs
-- **build:** empty .env values no longer override real config
-- **i18n:** missing keys added
-- **dashboard:** "Hide all" button restored
+---
 
 ## [3.8.13] — 2026-06-06
 
@@ -29,6 +12,9 @@
 - **feat(api):** accept path-scoped API keys on client API routes — keys may arrive via `/api/v1/vscode/<key>/…` path aliases (incl. `raw`/`combos`); explicit `Authorization`/`x-api-key` headers still take precedence. Split out of #3073. ([#3300](https://github.com/diegosouzapw/OmniRoute/pull/3300) — thanks @zhiru)
 - **feat(api):** model-catalog enrichment + MCP `model-catalog` tools — richer per-model metadata (context window, capabilities) surfaced through `/v1/models` and new MCP tools, plus `readHeaderValue` header-record support. Split out of #3073; reconciled on merge with the #3309 URL-token hardening (kept the security gate — no query-string credential fallback, management auth stays header-only). ([#3306](https://github.com/diegosouzapw/OmniRoute/pull/3306) — thanks @zhiru / @diegosouzapw)
 - **feat(dashboard):** internationalize the proxy settings UI — `ProxyTab` + the proxy `DocumentationTab`/`FreePoolTab`/`VercelRelayModal` now render via `t(...)`, with matching `en`/`pt-BR` message keys. Split out of #3073. ([#3307](https://github.com/diegosouzapw/OmniRoute/pull/3307), [#3310](https://github.com/diegosouzapw/OmniRoute/pull/3310) — thanks @zhiru)
+- **feat(provider):** provider test-all endpoint + per-connection rate-limit overrides + model visibility — `POST /api/models/test-all` runs parallel model tests (chunked, timeout-skip) atop a shared `runSingleModelTest` runner; per-connection rate-limit overrides land via `PATCH /api/providers/:id` (new `rate_limit_overrides_json` column + Zod schema); a dashboard model-visibility toolbar (All / Visible / Hidden) drives a `/v1/models` catalog that excludes user-hidden models; models auto-fetch on every connection add; and passthrough (OpenRouter) models gain test buttons. Folds in dashboard fixes on merge (missing alias/delete handlers, duplicate-model-ID React keys, "Hide all" restored) and a build fix so empty `.env` values no longer override real config. ([#3267](https://github.com/diegosouzapw/OmniRoute/pull/3267) — thanks @Vinayrnani)
+- **feat(api):** VS Code Copilot Ollama-compatible BYOK endpoint — exposes an Ollama-shaped surface so VS Code Copilot's "bring your own key" Ollama provider can target OmniRoute directly, with a `VscodeTokenAliasCard` in the dashboard endpoint tab to generate the path-scoped token alias. ([#3316](https://github.com/diegosouzapw/OmniRoute/pull/3316) — thanks @zhiru)
+- **feat(combo):** Auto-Combo candidate-expansion optimization + playground model dropdown + "only configured" model toggle — reworks the `auto` strategy's candidate selection in `combo.ts` and surfaces a model picker in the playground `StudioConfigPane` / `useAvailableModels`. ([#3322](https://github.com/diegosouzapw/OmniRoute/pull/3322) — thanks @oyi77)
 
 ### 🔒 Security
 
@@ -55,6 +41,7 @@
 
 - **test(catalog):** align the Antigravity preview-alias catalog test with the #3303 budget tiers — asserts the restored Claude/Gemini tiers are surfaced, locking in the behavior so a future tier change can't silently drop them again (thanks @diegosouzapw)
 - **docs:** rename the `resolve-issues` skill references to `review-issues` across the docs/skill surfaces, matching the renamed governance skill (thanks @diegosouzapw)
+- **docs:** document the VS Code / Ollama endpoints (API reference + new `docs/reference/CLI-TOOLS.md`) and improve the env-bootstrap + i18n key-coverage tooling. ([#3319](https://github.com/diegosouzapw/OmniRoute/pull/3319) — thanks @zhiru)
 - **chore(release):** open the v3.8.13 development cycle (version bump + cycle bookkeeping) and finalize this changelog (thanks @diegosouzapw)
 
 ### 🙌 Contributors
@@ -63,9 +50,10 @@ Thanks to everyone whose work landed in v3.8.13:
 
 | Contributor | PRs / Issues |
 | --- | --- |
-| [@zhiru](https://github.com/zhiru) | #3300, #3306, #3307 / #3310, #3309, #3301, #3311, #3320 |
+| [@zhiru](https://github.com/zhiru) | #3300, #3306, #3307 / #3310, #3309, #3301, #3311, #3320, #3319, #3316 |
 | [@tycronk20](https://github.com/tycronk20) | #3317, #3318 |
-| [@oyi77](https://github.com/oyi77) | #3292 (closes #3070) |
+| [@Vinayrnani](https://github.com/Vinayrnani) | #3267 |
+| [@oyi77](https://github.com/oyi77) | #3292 (closes #3070), #3322 |
 | [@onizukashonan14-png](https://github.com/onizukashonan14-png) | #3296 |
 | [@uniQta](https://github.com/uniQta) | #3290, #3295 |
 | [@wilsonicdev](https://github.com/wilsonicdev) | #3297 |
