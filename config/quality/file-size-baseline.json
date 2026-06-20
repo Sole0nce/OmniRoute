@@ -1,5 +1,6 @@
 {
   "_comment": "Catraca de tamanho (check-file-size.mjs). frozen so pode encolher; arquivos novos <= cap. --update ratcheta.",
+  "_rebaseline_2026_06_20_4042_m365_individual_draft": "#4042 M365 Copilot (individual / BizChat) DRAFT provider: src/shared/constants/providers.ts 3242->3255 (+13 = one new PROVIDER metadata entry `copilot-m365-web` mirroring the existing copilot-web web-session entry — id/alias/name/icon/color/textIcon/website/authHint/subscriptionRisk/riskNoticeVariant). Pure additive per-provider catalog data; not extractable (it IS the constant). The executor + SignalR/BizChat frame logic live in non-frozen open-sse/executors/copilot-m365-{web,frames,connection}.ts. DRAFT gated on the Rule #18 live round-trip with @skyzea1 (#4042).",
   "_rebaseline_2026_06_19_4313_harvest_x_sweep_reconcile": "RECONCILIACAO ao mergear #4313 (5 harvested features) APOS o provider-sweep #4324: valores MEDIDOS na arvore combinada release(com #4324)+#4313. route.ts 2580->2586 (sweep +19 NAMED_OPENAI_STYLE + #4313 +3 openadapter/dit/tokenrouter = uniao no Set, regioes disjuntas). providers.ts 3198->3242 (sweep 6 dead-provider marks + #4313 3 novas entries APIKEY_PROVIDERS). combos/page.tsx 4350->4385 (#4313 #3266 allowlist UI) e providers/page.tsx 1925->1927 (#4313 #4240 serviceKind state) — intocados pelo sweep, crescimento puro do #4313. Mesmo padrao release-volatil de medir-no-merge dos baselines de complexity/zizmor deste lote.",
   "_rebaseline_2026_06_19_provider_sweep_merge_reconcile": "provider-model-sweep PR merge into release/v3.8.30: the sweep's route.ts growth (NAMED_OPENAI_STYLE_PROVIDERS +19 entries, base 2538->2564) and #4259's cloudflare parseResponse (2538->2554) are disjoint regions that both land, so the merged route.ts frozen value is reconciled to its measured size here. constants/providers.ts carries the sweep's 6 dead-provider deprecation marks on top of release. chatCore.ts stays at #4266's 5128 (sweep does not touch it).",
   "_rebaseline_2026_06_19_provider_sweep_dead_providers": "provider-model-sweep Track C: src/shared/constants/providers.ts 3169->3198 (+29 = deprecated:true + riskNoticeVariant:\"deprecated\" + a deprecationReason for six providers the sweep confirmed dead — kluster/glhf/predibase/inclusionai/galadriel (DNS no longer resolves) + phind (API shut down 2026-01). Mirrors the existing qwen deprecation-flag pattern; pure additive metadata so the UI surfaces a deprecation notice instead of silently offering a non-working provider. Not extractable (it IS the per-provider constant data).",
@@ -177,7 +178,7 @@
     "src/shared/components/analytics/charts.tsx": 1558,
     "src/shared/constants/cliTools.ts": 875,
     "src/shared/constants/pricing.ts": 1592,
-    "src/shared/constants/providers.ts": 3242,
+    "src/shared/constants/providers.ts": 3255,
     "src/shared/constants/sidebarVisibility.ts": 1100,
     "src/shared/services/cliRuntime.ts": 1090,
     "src/shared/validation/schemas.ts": 2523,

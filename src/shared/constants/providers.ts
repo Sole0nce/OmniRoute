@@ -448,6 +448,19 @@ export const WEB_COOKIE_PROVIDERS = {
     subscriptionRisk: true,
     riskNoticeVariant: "webCookie",
   },
+  "copilot-m365-web": {
+    id: "copilot-m365-web",
+    alias: "m365",
+    name: "Microsoft 365 Copilot (BizChat)",
+    icon: "auto_awesome",
+    color: "#0078D4",
+    textIcon: "M3",
+    website: "https://m365.cloud.microsoft/chat",
+    authHint:
+      "Paste your individual M365 Copilot access_token plus the Chathub path (<user-oid>@<tenant-id>) from m365.cloud.microsoft/chat DevTools. ⚠️ Draft — pending live validation.",
+    subscriptionRisk: true,
+    riskNoticeVariant: "webCookie",
+  },
   "t3-web": {
     id: "t3-web",
     alias: "t3chat",
