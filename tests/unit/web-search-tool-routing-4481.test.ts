@@ -33,6 +33,24 @@ test("webSearchRouteModel is registered in the settings Zod schema", () => {
   assert.match(schema, /webSearchRouteModel:\s*z\.string\(\)/);
 });
 
+test("the Routing settings tab exposes a webSearchRouteModel field", () => {
+  const tab = readFileSync(
+    join(REPO_ROOT, "src/app/(dashboard)/dashboard/settings/components/RoutingTab.tsx"),
+    "utf8"
+  );
+  assert.match(tab, /settings\.webSearchRouteModel/);
+  assert.match(tab, /updateSetting\(\{ webSearchRouteModel:/);
+  assert.match(tab, /webSearchRouteTitle/);
+});
+
+test("en.json defines the web-search-routing UI strings", () => {
+  const en = JSON.parse(readFileSync(join(REPO_ROOT, "src/i18n/messages/en.json"), "utf8"));
+  const s = en.settings || {};
+  assert.equal(typeof s.webSearchRouteTitle, "string");
+  assert.equal(typeof s.webSearchRouteDesc, "string");
+  assert.equal(typeof s.webSearchRoutePlaceholder, "string");
+});
+
 // ── hasNativeWebSearchTool ───────────────────────────────────────────────
 
 test("detects the plain and preview native web-search tool types", () => {
