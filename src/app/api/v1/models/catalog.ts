@@ -43,6 +43,7 @@ import {
   isModelCatalogNamesEnabled,
   getModelsCatalogPrefixMode,
 } from "@/shared/utils/featureFlags";
+import { dedupeExactCatalogIds } from "./catalogDedupe";
 import {
   isNoAuthProviderBlocked,
   isNoAuthProviderKey,
@@ -1397,6 +1398,12 @@ export async function getUnifiedModelsResponse(
     // Advertise no-thinking gateway variants (Fase 8.1). Derived from the already
     // key-filtered list, so a variant only appears when its real model is permitted.
     finalModels = appendNoThinkingVariants(finalModels);
+
+    // #4424 follow-up — drop exact-duplicate ids that slip through the per-source push
+    // guards (e.g. `codex/gpt-5.5`, `veo-free/seedance` listed twice). Keyed by listing
+    // identity (id, type, subtype) so the intentional same-id audio transcription/speech
+    // pair survives. Independent of MODELS_CATALOG_PREFIX_MODE; runs as the final guard.
+    finalModels = dedupeExactCatalogIds(finalModels);
 
     const getDefaultContextFallback = (model: any): number | undefined => {
       if (typeof model.context_length === "number") return undefined;
