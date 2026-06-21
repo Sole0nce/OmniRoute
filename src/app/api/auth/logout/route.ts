@@ -10,6 +10,10 @@ export async function POST(request) {
   const auditContext = getAuditRequestContext(request);
   const cookieStore = await logoutRouteInternals.getCookieStore();
   cookieStore.delete("auth_token");
+  // OIDC handshake cookies — short-lived, but clear them on explicit logout too.
+  cookieStore.delete("oidc_state");
+  cookieStore.delete("oidc_nonce");
+  cookieStore.delete("oidc_code_verifier");
   logAuditEvent({
     action: "auth.logout.success",
     actor: "admin",

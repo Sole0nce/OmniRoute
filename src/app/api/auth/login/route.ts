@@ -11,6 +11,7 @@ import {
 import { loginSchema } from "@/shared/validation/schemas";
 import { isValidationFailure, validateBody } from "@/shared/validation/helpers";
 import { checkLoginGuard, clearLoginAttempts, recordLoginFailure } from "@/server/auth/loginGuard";
+import { isOidcConfigured, type OidcAuthMode } from "@/lib/auth/oidc";
 
 // SECURITY: No hardcoded fallback — JWT_SECRET must be configured.
 if (!process.env.JWT_SECRET) {
@@ -73,6 +74,23 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid password payload" }, { status: 400 });
     }
     const settings = await getSettings();
+    const authMode = (settings.authMode as OidcAuthMode) || "password";
+    if (authMode === "oidc" && isOidcConfigured(settings)) {
+      logAuditEvent({
+        action: "auth.login.password_disabled",
+        actor: "anonymous",
+        target: "dashboard-auth",
+        resourceType: "auth_session",
+        status: "failed",
+        ipAddress: auditContext.ipAddress || undefined,
+        requestId: auditContext.requestId,
+        metadata: { reason: "oidc_only_mode" },
+      });
+      return NextResponse.json(
+        { error: "Password login is disabled. Use OIDC sign-in." },
+        { status: 403 }
+      );
+    }
     const bruteForceEnabled = settings.bruteForceProtection !== false;
     const clientIp = auditContext.ipAddress || null;
 
