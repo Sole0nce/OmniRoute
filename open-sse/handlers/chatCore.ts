@@ -249,11 +249,7 @@ import {
   getTokenLimit,
   resolveComboContextLimit,
 } from "../services/contextManager.ts";
-import {
-  getBackgroundTaskReason,
-  getDegradedModel,
-  getBackgroundDegradationConfig,
-} from "../services/backgroundTaskDetector.ts";
+import { resolveBackgroundTaskRedirect } from "./chatCore/backgroundRedirect.ts";
 import type { CompressionConfig, CompressionPipelineStep } from "../services/compression/types.ts";
 import { prepareWebSearchFallbackBody } from "../services/webSearchFallback.ts";
 import {
@@ -904,35 +900,35 @@ export async function handleChatCore({
   // Detect source format and get target format
   // Model-specific targetFormat takes priority over provider default
 
-  // ── Background Task Redirection (T41) ──
-  const bgConfig = getBackgroundDegradationConfig();
-  const backgroundReason = bgConfig.enabled
-    ? getBackgroundTaskReason(body, clientRawRequest?.headers)
-    : null;
-  if (backgroundReason) {
-    const degradedModel = getDegradedModel(model);
-    if (degradedModel !== model) {
-      const originalModel = model;
-      log?.info?.(
-        "BACKGROUND",
-        `Background task redirect (${backgroundReason}): ${originalModel} → ${degradedModel}`
-      );
-      model = degradedModel;
-      if (body && typeof body === "object") {
-        body.model = model;
-      }
-
-      logAuditEvent({
-        action: "routing.background_task_redirect",
-        actor: apiKeyInfo?.name || "system",
-        target: connectionId || provider || "chat",
-        details: {
-          original_model: originalModel,
-          redirected_to: degradedModel,
-          reason: backgroundReason,
-        },
-      });
+  // ── Background Task Redirection (T41) — decision extracted to chatCore/backgroundRedirect.ts (#3501)
+  // backgroundReason is the detection signal (threaded into memory/skills injection below); redirect
+  // is the actual model downgrade to apply, if any.
+  const { backgroundReason, redirect: bgRedirect } = resolveBackgroundTaskRedirect({
+    body,
+    headers: clientRawRequest?.headers,
+    model,
+  });
+  if (bgRedirect) {
+    const originalModel = model;
+    log?.info?.(
+      "BACKGROUND",
+      `Background task redirect (${bgRedirect.reason}): ${originalModel} → ${bgRedirect.degradedModel}`
+    );
+    model = bgRedirect.degradedModel;
+    if (body && typeof body === "object") {
+      body.model = model;
     }
+
+    logAuditEvent({
+      action: "routing.background_task_redirect",
+      actor: apiKeyInfo?.name || "system",
+      target: connectionId || provider || "chat",
+      details: {
+        original_model: originalModel,
+        redirected_to: bgRedirect.degradedModel,
+        reason: bgRedirect.reason,
+      },
+    });
   }
 
   // Apply custom model aliases (Settings → Model Aliases → Pattern→Target) before routing (#315, #472)
