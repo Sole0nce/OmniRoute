@@ -540,7 +540,7 @@ function buildExecutorClientHeaders(
   return Object.keys(normalized).length > 0 ? normalized : null;
 }
 
-// extractSystemRoleMessages extracted to chatCore/claudeSystemRole.ts (#3501); re-exported below so
+// extractSystemRoleMessages extracted to chatCore/claudeSystemRole.ts (#3501); re-exported above so
 // existing importers (e.g. tests/unit/system-role-extraction.test.ts) keep resolving it from here.
 
 export async function handleChatCore({
