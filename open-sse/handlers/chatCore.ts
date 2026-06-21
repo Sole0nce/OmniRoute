@@ -206,12 +206,8 @@ import {
   shouldDetectLimit,
 } from "../services/toolLimitDetector.ts";
 
-import {
-  parseCodexQuotaHeaders,
-  getCodexModelScope,
-  getCodexDualWindowCooldownMs,
-  isCompactResponsesEndpoint,
-} from "../executors/codex.ts";
+import { isCompactResponsesEndpoint } from "../executors/codex.ts";
+import { buildCodexQuotaPersistence } from "./chatCore/codexQuota.ts";
 import { invalidateCodexQuotaCache } from "../services/codexQuotaFetcher.ts";
 import { translateNonStreamingResponse } from "./responseTranslator.ts";
 import { extractUsageFromResponse } from "./usageExtractor.ts";
@@ -826,67 +822,35 @@ export async function handleChatCore({
     if (provider !== "codex" || !connectionId || !headers) return;
 
     try {
-      const quota = parseCodexQuotaHeaders(headers);
-      if (!quota) return;
-
       const existingProviderData =
         credentials?.providerSpecificData && typeof credentials.providerSpecificData === "object"
-          ? credentials.providerSpecificData
+          ? (credentials.providerSpecificData as Record<string, unknown>)
           : {};
-      const scope = getCodexModelScope(model || requestedModel || "");
-      const quotaState = {
-        usage5h: quota.usage5h,
-        limit5h: quota.limit5h,
-        resetAt5h: quota.resetAt5h,
-        usage7d: quota.usage7d,
-        limit7d: quota.limit7d,
-        resetAt7d: quota.resetAt7d,
-        scope,
-        updatedAt: new Date().toISOString(),
-      };
+      // Pure payload build extracted to chatCore/codexQuota.ts (#3501). Returns null when the
+      // response carries no quota headers (nothing to persist).
+      const built = buildCodexQuotaPersistence({
+        headers,
+        existingProviderData,
+        modelForScope: model || requestedModel || "",
+        status,
+      });
+      if (!built) return;
 
-      const nextProviderData: Record<string, unknown> = {
-        ...existingProviderData,
-        codexQuotaState: quotaState,
-      };
+      if (built.exhaustionLog) {
+        log?.debug?.("CODEX", built.exhaustionLog);
+      }
 
-      // T03/T09: on 429, persist exact reset time per scope to avoid global over-blocking.
-      // Use dual-window cooldown to distinguish short-term and weekly Codex exhaustion.
+      // Invalidate the preflight cache for this connection so the next
+      // isModelAvailable check fetches fresh quota data.
       if (status === 429) {
-        const { cooldownMs, window: exhaustedWindow } = getCodexDualWindowCooldownMs(quota);
-        if (cooldownMs > 0) {
-          const scopeUntil = new Date(Date.now() + cooldownMs).toISOString();
-          const scopeMapRaw =
-            existingProviderData &&
-            typeof existingProviderData === "object" &&
-            existingProviderData.codexScopeRateLimitedUntil &&
-            typeof existingProviderData.codexScopeRateLimitedUntil === "object"
-              ? existingProviderData.codexScopeRateLimitedUntil
-              : {};
-
-          nextProviderData.codexScopeRateLimitedUntil = {
-            ...(scopeMapRaw as Record<string, unknown>),
-            [scope]: scopeUntil,
-          };
-          nextProviderData.codexExhaustedWindow = exhaustedWindow;
-          log?.debug?.(
-            "CODEX",
-            `Quota exhaustion on ${exhaustedWindow} window, cooldown until ${scopeUntil}`
-          );
-        }
-
-        // Invalidate the preflight cache for this connection so the next
-        // isModelAvailable check fetches fresh quota data.
-        if (connectionId) {
-          invalidateCodexQuotaCache(connectionId);
-        }
+        invalidateCodexQuotaCache(connectionId);
       }
 
       await updateProviderConnection(connectionId, {
-        providerSpecificData: nextProviderData,
+        providerSpecificData: built.nextProviderData,
       });
 
-      credentials.providerSpecificData = nextProviderData;
+      credentials.providerSpecificData = built.nextProviderData;
     } catch (err) {
       const errMessage = err instanceof Error ? err.message : String(err);
       log?.debug?.("CODEX", `Failed to persist codex quota state: ${errMessage}`);
