@@ -1,5 +1,6 @@
 import { injectMemoryAndSkills } from "./chatCore/memorySkillsInjection.ts";
 import { resolveChatCoreRequestSetup } from "./chatCore/requestSetup.ts";
+import { buildFailureUsageRecord } from "./chatCore/failureUsage.ts";
 import { checkIdempotencyCache } from "./chatCore/idempotency.ts";
 import { checkSemanticCache } from "./chatCore/semanticCache.ts";
 import { sanitizeChatRequestBody } from "./chatCore/sanitization.ts";
@@ -708,23 +709,23 @@ export async function handleChatCore({
     payload?: unknown,
     maxDepth = 3
   ): EffectiveServiceTier | null => resolveReportedServiceTierFor(provider, payload, maxDepth);
+  // Failure usage record building extracted to chatCore/failureUsage.ts (#3501); the handler keeps
+  // the fire-and-forget save + computes latencyMs, so the call sites stay byte-identical.
   const persistFailureUsage = (statusCode: number, errorCode?: string | null) => {
-    saveRequestUsage({
-      provider: provider || "unknown",
-      model: model || "unknown",
-      tokens: { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, reasoning: 0 },
-      status: String(statusCode),
-      success: false,
-      latencyMs: Date.now() - startTime,
-      timeToFirstTokenMs: 0,
-      errorCode: errorCode || String(statusCode),
-      timestamp: new Date().toISOString(),
-      connectionId: connectionId || undefined,
-      apiKeyId: apiKeyInfo?.id || undefined,
-      apiKeyName: apiKeyInfo?.name || undefined,
-      serviceTier: effectiveServiceTier,
-      comboStrategy: isCombo ? comboStrategy || undefined : undefined,
-    }).catch(() => {});
+    saveRequestUsage(
+      buildFailureUsageRecord({
+        provider,
+        model,
+        connectionId,
+        apiKeyInfo,
+        effectiveServiceTier,
+        isCombo,
+        comboStrategy,
+        statusCode,
+        errorCode,
+        latencyMs: Date.now() - startTime,
+      })
+    ).catch(() => {});
   };
 
   // Key-health updater extracted to chatCore/keyHealth.ts (#3501); bind the per-request log once
