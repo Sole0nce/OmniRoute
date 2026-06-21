@@ -44,7 +44,8 @@ import {
 import { CORS_HEADERS } from "../utils/cors.ts";
 import { checkHeapPressureGuard } from "../utils/heapPressure.ts";
 import { normalizeHeaders } from "../utils/headers.ts";
-import { detectFormatFromEndpoint, getTargetFormat } from "../services/provider.ts";
+import { getTargetFormat } from "../services/provider.ts";
+import { resolveChatCoreRequestFormat } from "./chatCore/requestFormat.ts";
 import { injectSystemPrompt } from "../services/systemPrompt.ts";
 import { translateRequest, needsTranslation } from "../translator/index.ts";
 import { FORMATS } from "../translator/formats.ts";
@@ -549,28 +550,6 @@ function buildExecutorClientHeaders(
   return Object.keys(normalized).length > 0 ? normalized : null;
 }
 
-function isCopilotClient(
-  headers: Headers | Record<string, unknown> | null | undefined,
-  userAgent?: string | null
-) {
-  const isMatch = (value: unknown) =>
-    typeof value === "string" && value.toLowerCase().includes("copilot");
-
-  if (isMatch(userAgent)) return true;
-
-  if (headers instanceof Headers) {
-    for (const [key, value] of headers as unknown as Iterable<[string, string]>) {
-      if (isMatch(key) || isMatch(value)) return true;
-    }
-  } else if (headers && typeof headers === "object") {
-    for (const [key, value] of Object.entries(headers)) {
-      if (isMatch(key) || isMatch(value)) return true;
-    }
-  }
-
-  return false;
-}
-
 export function extractSystemRoleMessages(payload: Record<string, unknown>): void {
   if (!Array.isArray(payload.messages)) return;
   const messages = payload.messages as Array<{ role?: unknown; content?: unknown }>;
@@ -874,22 +853,17 @@ export async function handleChatCore({
     credentials.connectionId = connectionId;
   }
 
-  const endpointPath = String(clientRawRequest?.endpoint || "");
-  const sourceFormat = detectFormatFromEndpoint(body, endpointPath);
-  const isResponsesEndpoint =
-    /\/responses(?=\/|$)/i.test(endpointPath) || /^responses(?=\/|$)/i.test(endpointPath);
-  const nativeCodexPassthrough = shouldUseNativeCodexPassthrough({
-    provider,
-    sourceFormat,
+  // Endpoint/format resolution extracted to chatCore/requestFormat.ts (#3501); pure derivation
+  // from the inbound request, destructured so every downstream use stays byte-identical.
+  const {
     endpointPath,
-  });
-  const isDroidCLI =
-    userAgent?.toLowerCase().includes("droid") || userAgent?.toLowerCase().includes("codex-cli");
-  const copilotCompatibleReasoning = isCopilotClient(clientRawRequest?.headers, userAgent);
-  const clientResponseFormat =
-    sourceFormat === FORMATS.OPENAI_RESPONSES && !isResponsesEndpoint && !isDroidCLI
-      ? FORMATS.OPENAI
-      : sourceFormat;
+    sourceFormat,
+    isResponsesEndpoint,
+    nativeCodexPassthrough,
+    isDroidCLI,
+    copilotCompatibleReasoning,
+    clientResponseFormat,
+  } = resolveChatCoreRequestFormat({ clientRawRequest, body, provider, userAgent });
 
   // Check for bypass patterns (warmup, skip) - return fake response
   const bypassResponse = handleBypassRequest(body, model, userAgent);
