@@ -166,7 +166,6 @@ import {
 import {
   getModelNormalizeToolCallId,
   getModelPreserveOpenAIDeveloperRole,
-  getModelUpstreamExtraHeaders,
 } from "@/lib/localDb";
 import { getProviderCredentials, extractSessionAffinityKey } from "@/sse/services/auth";
 import { deleteSessionAccountAffinity } from "@/lib/db/sessionAccountAffinity";
@@ -183,10 +182,7 @@ import {
 } from "../utils/cacheControlPolicy.ts";
 import { getCachedSettings } from "@/lib/db/readCache";
 import { applyCodexGlobalFastServiceTier } from "@/lib/providers/codexFastTier";
-import {
-  CPA_FORCE_FAST_MODE_HEADER,
-  shouldRequestClaudeFastMode,
-} from "@/lib/providers/claudeFastMode";
+import { buildUpstreamHeadersForExecute as buildUpstreamHeadersForExecuteFor } from "./chatCore/upstreamExecuteHeaders.ts";
 import {
   resolveEffectiveServiceTier as resolveEffectiveServiceTierFor,
   resolveReportedServiceTier as resolveReportedServiceTierFor,
@@ -1067,46 +1063,19 @@ export async function handleChatCore({
       ? credentials.providerSpecificData.customUserAgent.trim()
       : "";
 
-  const buildUpstreamHeadersForExecute = (modelToCall: string): Record<string, string> => {
-    const upstreamHeaders =
-      modelToCall === effectiveModel
-        ? {
-            ...getModelUpstreamExtraHeaders(provider || "", model || "", sourceFormat),
-            ...getModelUpstreamExtraHeaders(provider || "", resolvedModel || "", sourceFormat),
-          }
-        : (() => {
-            const r = resolveModelAlias(modelToCall);
-            return {
-              ...getModelUpstreamExtraHeaders(provider || "", modelToCall || "", sourceFormat),
-              ...getModelUpstreamExtraHeaders(provider || "", r || "", sourceFormat),
-            };
-          })();
-
-    if (connectionCustomUserAgent) {
-      upstreamHeaders["User-Agent"] = connectionCustomUserAgent;
-      if ("user-agent" in upstreamHeaders) {
-        upstreamHeaders["user-agent"] = connectionCustomUserAgent;
-      }
-    }
-
-    // Claude Fast Mode opt-in. When the user has enabled this in
-    // Settings > AI AND the target provider is the canonical Anthropic
-    // `claude` provider (Claude Code-compatible CPA bridges are excluded
-    // since they already select their own entrypoint) AND the model id
-    // matches the configured list, signal to a paired CLIProxyAPI build to
-    // rewrite the cc_entrypoint so the request can reach Anthropic Fast
-    // Mode (speed:"fast"). CPA builds that do not understand the header
-    // forward it harmlessly.
-    if (
-      provider === "claude" &&
-      typeof settings !== "undefined" &&
-      shouldRequestClaudeFastMode(settings, modelToCall)
-    ) {
-      upstreamHeaders[CPA_FORCE_FAST_MODE_HEADER] = "1";
-    }
-
-    return upstreamHeaders;
-  };
+  // Upstream extra-header building extracted to chatCore/upstreamExecuteHeaders.ts (#3501); bind the
+  // per-request inputs once and delegate so the existing call sites stay byte-identical.
+  const buildUpstreamHeadersForExecute = (modelToCall: string): Record<string, string> =>
+    buildUpstreamHeadersForExecuteFor({
+      modelToCall,
+      effectiveModel,
+      provider,
+      model,
+      resolvedModel,
+      sourceFormat,
+      connectionCustomUserAgent,
+      settings,
+    });
 
   // Default to false unless client explicitly sets stream: true (OpenAI spec compliant)
   const acceptHeader =
